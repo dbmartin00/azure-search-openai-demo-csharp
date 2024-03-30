@@ -16,6 +16,38 @@ public sealed class ApiClient(HttpClient httpClient)
         return await response.Content.ReadFromJsonAsync<ImageResponse>();
     }
 
+    public static string? GetSplitEvaluatorUrl() => SplitServices.GetEvaluatorURL();
+    public static string? GetSplitEvaluatorAuthKey() => SplitServices.GetSplitEvaluatorAuthKey();
+    public static string? GetSplitTrafficKey() => SplitServices.GetSplitTrafficKey();
+    public static string? GetSplitSdkKey() => SplitServices.GetSplitSdkKey();
+
+   public async Task<string?> TalkToAPersonAsync()
+    {
+        httpClient.DefaultRequestHeaders.Add("Authorization", GetSplitEvaluatorAuthKey());
+        var response = await httpClient.GetAsync(GetSplitEvaluatorUrl() + "/client/get-treatment?key=" + GetSplitTrafficKey() + "&split-name=talk_to_a_person");
+        var content = await response.Content.ReadAsStringAsync();
+
+        return await response.Content.ReadAsStringAsync();
+    }
+
+   public async Task<string?> SampleQuestionsAsync()
+    {
+        httpClient.DefaultRequestHeaders.Add("Authorization", GetSplitEvaluatorAuthKey());
+        var response = await httpClient.GetAsync(GetSplitEvaluatorUrl() + "/client/get-treatment?key=" + GetSplitTrafficKey() + "&split-name=sample_questions");
+        var content = await response.Content.ReadAsStringAsync();
+
+        return await response.Content.ReadAsStringAsync();
+    }
+
+   public async Task<string?> SatisfiedResponseEnabledAsync()
+    {
+        httpClient.DefaultRequestHeaders.Add("Authorization", GetSplitEvaluatorAuthKey());
+        var response = await httpClient.GetAsync(GetSplitEvaluatorUrl() + "/client/get-treatment?key=" + GetSplitTrafficKey() + "&split-name=satisfied_response");
+        var content = await response.Content.ReadAsStringAsync();
+
+        return await response.Content.ReadAsStringAsync();
+    }
+    
     public async Task<bool> ShowLogoutButtonAsync()
     {
         var response = await httpClient.GetAsync("api/enableLogout");

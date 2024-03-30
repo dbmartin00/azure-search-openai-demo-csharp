@@ -1,0 +1,33 @@
+@page "/talk"
+
+<PageTitle>Thank you for reaching out!</PageTitle>
+
+<h2> We'll get back to you soon.</h2>
+
+@{  
+    DateTimeOffset now = DateTimeOffset.UtcNow;
+
+    string url = "https://events.split.io/api/events";
+    string jsonData = "{" 
+        + "\"eventTypeId\":\"want_to_talk\","
+        + "\"trafficTypeName\":\"user\","
+        + "\"key\":\"" + ApiClient.GetSplitTrafficKey() + "\","
+        + "\"environmentName\":\"Prod-microsoft\","
+        + "\"timestamp\":" + now.ToUnixTimeMilliseconds()
+    + "}";
+
+    using (var client = new HttpClient())
+    {
+        using (var request = new HttpRequestMessage(HttpMethod.Post, url))
+        {
+            request.Content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+            
+            // Add a header to this particular request
+            request.Headers.Add("Authorization", "Bearer " + ApiClient.GetSplitSdkKey());
+             
+            // fire and forget
+            client.SendAsync(request);
+        }
+    }  
+    Thread.Sleep(500); // DBM FIXME slightly evil
+}

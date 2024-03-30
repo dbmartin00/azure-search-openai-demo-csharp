@@ -1,4 +1,7 @@
-﻿<MudGrid Justify="Justify.Center">
+﻿@using System.Text.Json;
+@inject ApiClient ApiClient
+
+<MudGrid Justify="Justify.Center">
 @if (_parsedAnswer.HasValue is true)
 {
     var answer = _parsedAnswer.Value;
@@ -39,6 +42,12 @@
                                             @followup
                                     </MudChip>
                                 }
+                               @if (SatisfiedResponseEnabled()) {                                    
+                                    <MudChip Variant="Variant.Text" Color="Color.Secondary"
+                                        OnClick="@(_ => OnAskFollowupAsync("Thank you! You answered my question."))">
+                                            Thank you! You answered my question.
+                                    </MudChip>
+                                }
                             </div>
                         }
                     </MudPaper>
@@ -67,3 +76,27 @@
     </MudItem>
 }
 </MudGrid>
+
+@code {
+    private bool satisfiedResponseEnabled;
+
+    private bool SatisfiedResponseEnabled() {
+        return satisfiedResponseEnabled;
+    }
+
+    private class SplitConfig
+    {
+        public required string splitName { get; set; }
+        public required string treatment { get; set; }
+    }    
+    protected override async Task OnInitializedAsync()
+    {
+        string? response = await ApiClient.SatisfiedResponseEnabledAsync();
+
+        if(response != null) {
+            var config = JsonSerializer.Deserialize<SplitConfig>(response);
+            satisfiedResponseEnabled = string.Equals(config?.treatment, "on");
+        }     
+    }
+
+}

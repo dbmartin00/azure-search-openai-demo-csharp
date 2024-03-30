@@ -5,6 +5,12 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Embeddings;
 
+using Splitio.Services.Client.Classes;
+using Splitio.Services.Client.Interfaces;
+using System.Text.RegularExpressions;
+using System.Text.Json;
+using SharedWebComponents.Services;
+
 namespace MinimalApi.Services;
 #pragma warning disable SKEXP0011 // Mark members as static
 #pragma warning disable SKEXP0001 // Mark members as static
@@ -15,6 +21,9 @@ public class ReadRetrieveReadChatService
     private readonly IConfiguration _configuration;
     private readonly IComputerVisionService? _visionService;
     private readonly TokenCredential? _tokenCredential;
+
+    private readonly ISplitClient _splitClient;
+    private readonly string _splitTrafficKey;
 
     public ReadRetrieveReadChatService(
         ISearchService searchClient,
@@ -54,7 +63,77 @@ public class ReadRetrieveReadChatService
         _configuration = configuration;
         _visionService = visionService;
         _tokenCredential = tokenCredential;
+
+        _splitTrafficKey = ApiClient.GetSplitTrafficKey() ?? "<placeholder>";
+        _splitClient = initSplit();
     }
+
+    public ISplitClient initSplit() {
+        ConfigurationOptions config = new ConfigurationOptions {
+            FeaturesRefreshRate = 10,
+            ImpressionsRefreshRate = 30,
+            LabelsEnabled = true,
+            EventsPushRate = 30,
+            IPAddressesEnabled = false,
+            StreamingEnabled = true
+        };
+
+        SplitFactory factory = new SplitFactory(ApiClient.GetSplitSdkKey(), config);
+        ISplitClient _splitClient = factory.Client();
+        try
+        {
+            _splitClient.BlockUntilReady(10000);
+        }
+        catch (Exception ex)
+        {
+            throw new TimeoutException("Split timed out during SDK init: " + ex.Message);
+        }
+        return _splitClient;
+    }
+
+    private class SplitConfig
+    {
+        public required string ModelId { get; set; }
+        public required int MaxTokens { get; set; }
+        public required float Temperature { get; set; }
+    }    
+    
+    private class CursorConfig 
+    {
+        public required string Cursor { get; set; }        
+    }
+
+    // DBM doesn't address root cause 
+    public static string HealJson(string json)
+    {   
+        string result = json.Trim();
+        result = result.Replace("\r\n", " ");
+        result = result.Replace("\n", " ");
+
+        // Check if the JSON ends with a closing quote and brace
+        if (!result.TrimEnd().EndsWith("\"}") 
+                // && !result.TrimEnd().EndsWith("\" }")
+                && !Regex.IsMatch(result, "\"\\s*}$")
+                && !Regex.IsMatch(result, "\"\\s*]$"))
+        {
+            // Check for missing closing quote
+            if (!result.TrimEnd().EndsWith("\""))
+            {
+                result += "\"";
+            }
+            
+            // Check for missing closing brace
+            if (result.TrimStart().StartsWith("{") && !result.TrimEnd().EndsWith("}"))
+            {
+                result += "}";
+            } else if (result.TrimStart().StartsWith("[") && !result.TrimEnd().EndsWith("]")) {
+                result += "]";
+            }
+        }
+        
+        return result;
+    }
+
 
     public async Task<ApproachResponse> ReplyAsync(
         ChatTurn[] history,
@@ -173,23 +252,68 @@ You answer needs to be a json object with the following format.
             answerChat.AddUserMessage(prompt);
         }
 
-        var promptExecutingSetting = new OpenAIPromptExecutionSettings
-        {
-            MaxTokens = 1024,
-            Temperature = overrides?.Temperature ?? 0.7,
+        var splitResult = _splitClient.GetTreatmentWithConfig(
+                                        _splitTrafficKey, // unique identifier for your user
+                                        "chat_properties");
+        var splitConfig = JsonSerializer.Deserialize<SplitConfig>(splitResult.Config);
+
+        var cursorResult = _splitClient.GetTreatmentWithConfig(_splitTrafficKey, "answer_prefix");
+        var cursorConfig = JsonSerializer.Deserialize<CursorConfig>(cursorResult.Config);
+        // var cursor = cursorConfig?.Cursor ?? ">> ";
+        var cursor = cursorConfig?.Cursor;
+
+        var promptExecutingSetting = new OpenAIPromptExecutionSettings {
+            ModelId = splitConfig?.ModelId ?? "gpt-4-16k",
+            MaxTokens = splitConfig?.MaxTokens ?? 128,
+            Temperature = splitConfig?.Temperature ?? 1.5,
             StopSequences = [],
         };
 
+        // var promptExecutingSetting = new OpenAIPromptExecutionSettings
+        // {
+        //     MaxTokens = 1024,
+        //     Temperature = overrides?.Temperature ?? 0.7,
+        //     StopSequences = [],
+        // };   
+
         // get answer
+        DateTime startTime = DateTime.UtcNow;
+
         var answer = await chat.GetChatMessageContentAsync(
                        answerChat,
                        promptExecutingSetting,
                        cancellationToken: cancellationToken);
+        
         var answerJson = answer.Content ?? throw new InvalidOperationException("Failed to get search query");
-        var answerObject = JsonSerializer.Deserialize<JsonElement>(answerJson);
+
+        DateTime endTime = DateTime.UtcNow;
+        TimeSpan getChatMessageTimeSpan = endTime - startTime;
+        long getChatMessageTimeInMillis = (long) getChatMessageTimeSpan.TotalMilliseconds;
+
+        Dictionary<string, object> dict = new Dictionary<string, object>();
+        dict.Add("ModelId", promptExecutingSetting.ModelId);
+        dict.Add("MaxTokens", promptExecutingSetting.MaxTokens);
+        dict.Add("Temperature", promptExecutingSetting.Temperature);
+
+        _splitClient.Track(_splitTrafficKey, "user", "chat_api_in_millis", getChatMessageTimeInMillis, dict);
+
+        // DBM for some reason some requests were missing their final } closing character
+        // and sometimes empty?
+        answerJson = HealJson(answerJson);
+
+        var answerObject = new JsonElement();
+        try {
+            answerObject = JsonSerializer.Deserialize<JsonElement>(answerJson);
+            answerObject.GetProperty("answer").GetString();
+            answerObject.GetProperty("thoughts").GetString();
+        } catch(Exception ex) {
+            throw new JsonException(ex.Message + " answerJson: " + answerJson.ToString());
+        }
         var ans = answerObject.GetProperty("answer").GetString() ?? throw new InvalidOperationException("Failed to get answer");
         var thoughts = answerObject.GetProperty("thoughts").GetString() ?? throw new InvalidOperationException("Failed to get thoughts");
 
+        // DBM edit
+        ans = cursor + ans;
         // step 4
         // add follow up questions if requested
         if (overrides?.SuggestFollowupQuestions is true)
@@ -214,7 +338,18 @@ e.g.
                 cancellationToken: cancellationToken);
 
             var followUpQuestionsJson = followUpQuestions.Content ?? throw new InvalidOperationException("Failed to get search query");
-            var followUpQuestionsObject = JsonSerializer.Deserialize<JsonElement>(followUpQuestionsJson);
+            
+            // DBM for some reason some requests were missing their final } closing character
+            // and sometimes empty?
+            followUpQuestionsJson = HealJson(followUpQuestionsJson);
+
+            var followUpQuestionsObject = new JsonElement();
+            try {
+                followUpQuestionsObject = JsonSerializer.Deserialize<JsonElement>(followUpQuestionsJson);
+            } catch(Exception ex) {
+                throw new JsonException(ex.Message + " followUpQuestionsJson: " + followUpQuestionsJson.ToString());
+            }
+
             var followUpQuestionsList = followUpQuestionsObject.EnumerateArray().Select(x => x.GetString()).ToList();
             foreach (var followUpQuestion in followUpQuestionsList)
             {

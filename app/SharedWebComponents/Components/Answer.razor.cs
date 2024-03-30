@@ -19,8 +19,38 @@ public sealed partial class Answer
         base.OnParametersSet();
     }
 
+    private async Task TrackEventToSplitAsync() {
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        string url = "https://events.split.io/api/events";
+        string jsonData = "{" 
+            + "\"eventTypeId\":\"thank_you\","
+            + "\"trafficTypeName\":\"user\","
+            + "\"key\":\"" + ApiClient.GetSplitTrafficKey() +  "\","
+            + "\"environmentName\":\"Prod-microsoft\","
+            + "\"timestamp\":" + now.ToUnixTimeMilliseconds()
+        + "}";
+
+        using (var client = new HttpClient())
+        {
+            using (var request = new HttpRequestMessage(HttpMethod.Post, url))
+            {
+                request.Content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+                
+                request.Headers.Add("Authorization", "Bearer " + ApiClient.GetSplitSdkKey());
+                
+                // fire and forget
+                await client.SendAsync(request);
+            }
+        }  
+    }
+
     private async Task OnAskFollowupAsync(string followupQuestion)
     {
+        if(followupQuestion.StartsWith("Thank you")) {
+            await TrackEventToSplitAsync();
+        }
         if (FollowupQuestionClicked.HasDelegate)
         {
             await FollowupQuestionClicked.InvokeAsync(followupQuestion);

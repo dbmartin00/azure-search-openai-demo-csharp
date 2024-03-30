@@ -1,9 +1,41 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
+using Splitio.Services.Client.Classes;
+using Splitio.Services.Client.Interfaces;
+using SharedWebComponents.Services;
 
 namespace MinimalApi.Extensions;
 
 internal static class WebApplicationExtensions
-{
+{   
+    static WebApplicationExtensions() {
+        InitSplit();
+    }
+
+    private static ISplitClient? s_splitClient;
+    
+    public static ISplitClient InitSplit() {
+        ConfigurationOptions config = new ConfigurationOptions {
+            FeaturesRefreshRate = 10,
+            ImpressionsRefreshRate = 30,
+            LabelsEnabled = true,
+            EventsPushRate = 30,
+            IPAddressesEnabled = false,
+            StreamingEnabled = true
+        };
+
+        SplitFactory factory = new SplitFactory(ApiClient.GetSplitSdkKey(), config);
+        s_splitClient = factory.Client();
+        try
+        {
+            s_splitClient.BlockUntilReady(10000);
+        }
+        catch (Exception ex)
+        {
+            throw new TimeoutException("Split timed out during SDK init: " + ex.Message);
+        }
+        return s_splitClient;
+    }
+
     internal static WebApplication MapApi(this WebApplication app)
     {
         var api = app.MapGroup("api");
@@ -77,10 +109,21 @@ internal static class WebApplicationExtensions
     {
         if (request is { History.Length: > 0 })
         {
-            var response = await chatService.ReplyAsync(
-                request.History, request.Overrides, cancellationToken);
+            try {
+                var response = await chatService.ReplyAsync(
+                    request.History, request.Overrides, cancellationToken);
 
-            return TypedResults.Ok(response);
+                return TypedResults.Ok(response);
+            } catch (Exception ex) {
+                Dictionary<string, object> dict = new Dictionary<string, object>();
+                dict.Add("ex.Message", ex.Message);
+                dict.Add("ex.StackTrace", ex.StackTrace!);
+                dict.Add("ex.Source", ex.Source!);
+                dict.Add("ex.TargetSite", ex.TargetSite!);
+
+                s_splitClient!.Track(ApiClient.GetSplitTrafficKey(), "user", "ChatService.ReplyAsync.error", 1, dict);
+                throw;
+            }
         }
 
         return Results.BadRequest();
