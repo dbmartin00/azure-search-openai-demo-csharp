@@ -121,7 +121,7 @@ internal static class WebApplicationExtensions
                 dict.Add("ex.Source", ex.Source!);
                 dict.Add("ex.TargetSite", ex.TargetSite!);
 
-                s_splitClient!.Track(ApiClient.GetSplitTrafficKey(), "user", "ChatService.ReplyAsync.error", 1, dict);
+                s_splitClient!.Track(ApiClient.GetSplitTrafficKey(), "user", "error", 1, dict);
                 throw;
             }
         }

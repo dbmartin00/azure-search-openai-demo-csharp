@@ -70,12 +70,13 @@ public class ReadRetrieveReadChatService
 
     public ISplitClient initSplit() {
         ConfigurationOptions config = new ConfigurationOptions {
-            FeaturesRefreshRate = 10,
-            ImpressionsRefreshRate = 30,
+            FeaturesRefreshRate = 5,
+            ImpressionsRefreshRate = 5,
             LabelsEnabled = true,
             EventsPushRate = 30,
             IPAddressesEnabled = false,
-            StreamingEnabled = true
+            StreamingEnabled = true,
+            ImpressionsMode = Splitio.Domain.ImpressionsMode.Debug
         };
 
         SplitFactory factory = new SplitFactory(ApiClient.GetSplitSdkKey(), config);

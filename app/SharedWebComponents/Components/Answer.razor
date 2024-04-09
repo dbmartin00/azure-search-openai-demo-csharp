@@ -44,10 +44,16 @@
                                 }
                                @if (SatisfiedResponseEnabled()) {                                    
                                     <MudChip Variant="Variant.Text" Color="Color.Secondary"
-                                        OnClick="@(_ => OnAskFollowupAsync("Thank you! You answered my question."))">
-                                            Thank you! You answered my question.
+                                        OnClick="@(_ => OnAskFollowupAsync("Thank you!"))">
+                                            Thank you!
                                     </MudChip>
                                 }
+                               @if (TalkToAPersonEnabled()) {                                    
+                                    <MudChip Variant="Variant.Text" Color="Color.Secondary"
+                                        OnClick="@(_ => OnAskFollowupAsync("Can I talk to a person?"))">
+                                            Can I talk to a person?
+                                    </MudChip>
+                                }                                
                             </div>
                         }
                     </MudPaper>
@@ -80,8 +86,14 @@
 @code {
     private bool satisfiedResponseEnabled;
 
+    private bool talkToAPersonEnabled;
+
     private bool SatisfiedResponseEnabled() {
         return satisfiedResponseEnabled;
+    }
+
+    private bool TalkToAPersonEnabled() {
+        return talkToAPersonEnabled;
     }
 
     private class SplitConfig
@@ -97,6 +109,13 @@
             var config = JsonSerializer.Deserialize<SplitConfig>(response);
             satisfiedResponseEnabled = string.Equals(config?.treatment, "on");
         }     
+
+        string? talkResponse = await ApiClient.TalkToAPersonAsync();
+
+        if(talkResponse != null) {
+            var config = JsonSerializer.Deserialize<SplitConfig>(talkResponse);
+            talkToAPersonEnabled = string.Equals(config?.treatment, "on");
+        }
     }
 
 }

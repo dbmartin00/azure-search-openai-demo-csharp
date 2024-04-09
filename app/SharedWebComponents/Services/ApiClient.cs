@@ -23,7 +23,12 @@ public sealed class ApiClient(HttpClient httpClient)
 
    public async Task<string?> TalkToAPersonAsync()
     {
-        httpClient.DefaultRequestHeaders.Add("Authorization", GetSplitEvaluatorAuthKey());
+        if(!httpClient.DefaultRequestHeaders.Contains("Authorization")) {
+            httpClient.DefaultRequestHeaders.Add("Authorization", GetSplitEvaluatorAuthKey());
+        }
+    //     httpClient.DefaultRequestHeaders.Authorization = 
+    // new System.Net.Http.Headers.AuthenticationHeaderValue("", GetSplitEvaluatorAuthKey());
+
         var response = await httpClient.GetAsync(GetSplitEvaluatorUrl() + "/client/get-treatment?key=" + GetSplitTrafficKey() + "&split-name=talk_to_a_person");
         var content = await response.Content.ReadAsStringAsync();
 
@@ -32,7 +37,9 @@ public sealed class ApiClient(HttpClient httpClient)
 
    public async Task<string?> SampleQuestionsAsync()
     {
-        httpClient.DefaultRequestHeaders.Add("Authorization", GetSplitEvaluatorAuthKey());
+        if(!httpClient.DefaultRequestHeaders.Contains("Authorization")) {
+            httpClient.DefaultRequestHeaders.Add("Authorization", GetSplitEvaluatorAuthKey());
+        }
         var response = await httpClient.GetAsync(GetSplitEvaluatorUrl() + "/client/get-treatment?key=" + GetSplitTrafficKey() + "&split-name=sample_questions");
         var content = await response.Content.ReadAsStringAsync();
 
@@ -41,7 +48,9 @@ public sealed class ApiClient(HttpClient httpClient)
 
    public async Task<string?> SatisfiedResponseEnabledAsync()
     {
-        httpClient.DefaultRequestHeaders.Add("Authorization", GetSplitEvaluatorAuthKey());
+        if(!httpClient.DefaultRequestHeaders.Contains("Authorization")) {
+            httpClient.DefaultRequestHeaders.Add("Authorization", GetSplitEvaluatorAuthKey());
+        }
         var response = await httpClient.GetAsync(GetSplitEvaluatorUrl() + "/client/get-treatment?key=" + GetSplitTrafficKey() + "&split-name=satisfied_response");
         var content = await response.Content.ReadAsStringAsync();
 

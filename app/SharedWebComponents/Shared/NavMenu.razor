@@ -20,36 +20,6 @@
                 Icon="@Icons.Material.Filled.QuestionAnswer">
         Chat
     </MudNavLink>
-    @if (TalkToAPersonEnabled()) {
-        <MudNavLink Href="talk" aria-label="Talk to a person"
-                    Icon="@Icons.Material.Filled.QuestionAnswer">
-            Talk to a person
-        </MudNavLink>    
-    } 
+
 
 </MudNavMenu>
-
-@code {
-    private bool talkToAPersonEnabled;
-
-    private bool TalkToAPersonEnabled() {
-        return talkToAPersonEnabled;
-    }
-
-    private class SplitConfig
-    {
-        public required string splitName { get; set; }
-        public required string treatment { get; set; }
-    }    
-    protected override async Task OnInitializedAsync()
-    {
-        DateTime startTime = DateTime.UtcNow;
-
-        string? response = await ApiClient.TalkToAPersonAsync();
-
-        if(response != null) {
-            var config = JsonSerializer.Deserialize<SplitConfig>(response);
-            talkToAPersonEnabled = string.Equals(config?.treatment, "on");
-        }
-    }
-}
