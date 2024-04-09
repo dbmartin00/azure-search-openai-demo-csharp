@@ -4,10 +4,25 @@ using Azure.Core;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Embeddings;
+using Microsoft.FeatureManagement;
+using System.Text.RegularExpressions;
 
 namespace MinimalApi.Services;
 #pragma warning disable SKEXP0011 // Mark members as static
 #pragma warning disable SKEXP0001 // Mark members as static
+
+public class ChatProperties
+{
+    public double Temperature { get; set; }
+    public string? ModelId { get; set; }
+    public int MaxTokens { get; set; }
+
+    public override string ToString()
+    {
+        return $"temperature: {Temperature} modelid: {ModelId} max_tokens: {MaxTokens}";
+    }
+}
+
 public class ReadRetrieveReadChatService
 {
     private readonly ISearchService _searchClient;
@@ -54,7 +69,13 @@ public class ReadRetrieveReadChatService
         _configuration = configuration;
         _visionService = visionService;
         _tokenCredential = tokenCredential;
+
     }
+
+    public static async Task<bool> IsFeatureEnabledAsync(IFeatureManager featureManager, string flag_name)
+    {
+        return await featureManager.IsEnabledAsync(flag_name);
+    }  
 
     public async Task<ApproachResponse> ReplyAsync(
         ChatTurn[] history,
@@ -180,6 +201,59 @@ You answer needs to be a json object with the following format.
             StopSequences = [],
         };
 
+    // MESSY FOR NOW
+    // 
+        var appConfiguration = new ConfigurationBuilder()
+            .AddAzureAppConfiguration(AzureAppConfigServices.GetAzureAppConfigConnectionString())
+            .Build();
+                    
+        var chatPropertiesOn = new ChatProperties();
+        appConfiguration.GetSection("split:chat_properties:on").Bind(chatPropertiesOn);
+        var chatPropertiesOff = new ChatProperties();
+        appConfiguration.GetSection("split:chat_properties:on").Bind(chatPropertiesOff);
+
+        var section = appConfiguration.GetSection("split:answer_prefix:on");
+        string answerPrefixOnCursor = Regex.Unescape(section.Value ?? "null");
+        appConfiguration.GetSection("split:answer_prefix:off");
+        string answerPrefixOffCursor = Regex.Unescape(section.Value ?? "null");
+;                        
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(appConfiguration);
+        services.AddFeatureManagement();
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Example of using FeatureManager
+        var featureManager = serviceProvider.GetRequiredService<IFeatureManager>();
+
+        string flag_name = "chat_properties";
+        bool chatPropertiesEnabled = await IsFeatureEnabledAsync(featureManager, flag_name);
+
+        flag_name = "answer_prefix";
+        bool answerPrefixEnabled = await IsFeatureEnabledAsync(featureManager, flag_name);
+
+        string answer_prefix = "";
+        if(answerPrefixEnabled) {
+            answer_prefix = answerPrefixOnCursor;
+        } else {
+            answer_prefix = answerPrefixOffCursor;
+        }
+
+        ChatProperties selectedChatProperties;
+        if(chatPropertiesEnabled) {
+            selectedChatProperties = chatPropertiesOn;
+        } else {
+            selectedChatProperties = chatPropertiesOff;
+        }
+
+        // flag override
+        promptExecutingSetting.ModelId = selectedChatProperties.ModelId;
+        promptExecutingSetting.MaxTokens = selectedChatProperties.MaxTokens;
+        promptExecutingSetting.Temperature = selectedChatProperties.Temperature;
+
+    // 
+    // AppConfig block
+    //
+
         // get answer
         var answer = await chat.GetChatMessageContentAsync(
                        answerChat,
@@ -189,6 +263,13 @@ You answer needs to be a json object with the following format.
         var answerObject = JsonSerializer.Deserialize<JsonElement>(answerJson);
         var ans = answerObject.GetProperty("answer").GetString() ?? throw new InvalidOperationException("Failed to get answer");
         var thoughts = answerObject.GetProperty("thoughts").GetString() ?? throw new InvalidOperationException("Failed to get thoughts");
+
+        // DBM edit
+        if(answerPrefixEnabled) {
+            ans = answerPrefixOnCursor + ans;
+        } else {
+            ans = answerPrefixOffCursor + ans;
+        }
 
         // step 4
         // add follow up questions if requested
