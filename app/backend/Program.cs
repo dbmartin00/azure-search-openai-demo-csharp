@@ -82,7 +82,13 @@ app.UseHttpsRedirection();
 app.UseOutputCache();
 app.UseRouting();
 app.UseStaticFiles();
-app.UseCors();
+
+// DBM was here
+app.UseCors(builder =>
+    builder.AllowAnyOrigin()
+    );
+
+// app.UseCors();
 app.UseBlazorFrameworkFiles();
 app.UseAntiforgery();
 app.MapRazorPages();

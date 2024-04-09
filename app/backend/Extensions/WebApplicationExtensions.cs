@@ -1,4 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.FeatureManagement;
 
 namespace MinimalApi.Extensions;
 
@@ -25,6 +28,12 @@ internal static class WebApplicationExtensions
 
         api.MapGet("enableLogout", OnGetEnableLogout);
 
+        api.MapGet("talk_to_a_person", OnTalkToAPersonAsync);
+
+        api.MapGet("satisfied_response", OnSatisfiedResponseAsync);
+
+        api.MapGet("sample_questions", OnSampleQuestionsAsync);
+
         return app;
     }
 
@@ -36,6 +45,50 @@ internal static class WebApplicationExtensions
         return TypedResults.Ok(enableLogout);
     }
 
+    public static async Task<bool> IsFeatureEnabledAsync(IFeatureManager featureManager, string flag_name)
+    {
+        return await featureManager.IsEnabledAsync(flag_name);
+    }  
+
+    private static IFeatureManager GetFeatureManager() 
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddAzureAppConfiguration(AzureAppConfigServices.GetAzureAppConfigConnectionString())
+            .Build();
+
+        // Set up DI
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddFeatureManagement();
+        var serviceProvider = services.BuildServiceProvider();
+
+        return serviceProvider.GetRequiredService<IFeatureManager>();
+    }
+
+    private static async Task<IResult> OnTalkToAPersonAsync() 
+    {
+        string flag_name = "talk_to_a_person";
+        bool isMyFeatureEnabled = await IsFeatureEnabledAsync(GetFeatureManager(), flag_name);
+        // Console.WriteLine($"{flag_name} enabled: {isMyFeatureEnabled}");
+        
+        return TypedResults.Ok(isMyFeatureEnabled);
+    }
+    private static async Task<IResult> OnSatisfiedResponseAsync() 
+    {
+        string flag_name = "satisfied_response";
+        bool isMyFeatureEnabled = await IsFeatureEnabledAsync(GetFeatureManager(), flag_name);
+        // Console.WriteLine($"{flag_name} enabled: {isMyFeatureEnabled}");
+        
+        return TypedResults.Ok(isMyFeatureEnabled);
+    }
+    private static async Task<IResult> OnSampleQuestionsAsync() 
+    {
+        string flag_name = "sample_questions";
+        bool isMyFeatureEnabled = await IsFeatureEnabledAsync(GetFeatureManager(), flag_name);
+        // Console.WriteLine($"{flag_name} enabled: {isMyFeatureEnabled}");
+        
+        return TypedResults.Ok(isMyFeatureEnabled);
+    }
     private static async IAsyncEnumerable<ChatChunkResponse> OnPostChatPromptAsync(
         PromptRequest prompt,
         OpenAIClient client,

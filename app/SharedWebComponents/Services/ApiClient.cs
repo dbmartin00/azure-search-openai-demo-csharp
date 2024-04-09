@@ -1,11 +1,35 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Net.Http.Headers;
+using Microsoft.Extensions.Configuration;
+using Microsoft.FeatureManagement;
 
 namespace SharedWebComponents.Services;
 
 public sealed class ApiClient(HttpClient httpClient)
 {
+    public async Task<bool> TalkToAPersonAsync() 
+    {
+        var response = await httpClient.GetAsync("api/talk_to_a_person");
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<bool>();
+    }
+   public async Task<bool> SampleQuestionsAsync()
+    {
+        var response = await httpClient.GetAsync("api/sample_questions");
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<bool>();
+    }
+
+   public async Task<bool> SatisfiedResponseEnabledAsync()
+    {
+        var response = await httpClient.GetAsync("api/satisfied_response");
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<bool>();
+    }
     public async Task<ImageResponse?> RequestImageAsync(PromptRequest request)
     {
         var response = await httpClient.PostAsJsonAsync(

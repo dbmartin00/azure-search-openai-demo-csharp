@@ -1,4 +1,6 @@
-﻿<MudGrid Justify="Justify.Center">
+﻿@inject ApiClient ApiClient
+
+<MudGrid Justify="Justify.Center">
 @if (_parsedAnswer.HasValue is true)
 {
     var answer = _parsedAnswer.Value;
@@ -39,8 +41,23 @@
                                             @followup
                                     </MudChip>
                                 }
+                                @if(TalkToAPersonEnabled()) 
+                                {
+                                    <MudChip Variant="Variant.Text" Color="Color.Secondary"
+                                        OnClick="@(_ => OnAskFollowupAsync("Can I talk to a person?"))">
+                                            Can I talk to a person?
+                                    </MudChip>
+                                }
+                                @if(SatisfiedResponseEnabled()) 
+                                {
+                                    <MudChip Variant="Variant.Text" Color="Color.Secondary"
+                                        OnClick="@(_ => OnAskFollowupAsync("Thank you!"))">
+                                            Thank you!
+                                    </MudChip>
+                                }                                                                     
                             </div>
                         }
+
                     </MudPaper>
                 </ChildContent>
             </MudTabPanel>
@@ -67,3 +84,23 @@
     </MudItem>
 }
 </MudGrid>
+
+@code {
+    private bool talkToAPerson;
+
+    private bool satisfiedResponse;
+    
+    private bool TalkToAPersonEnabled() {
+        return talkToAPerson;
+    }
+    
+    private bool SatisfiedResponseEnabled() {
+        return satisfiedResponse;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        talkToAPerson = await ApiClient.TalkToAPersonAsync();
+        satisfiedResponse = await ApiClient.SatisfiedResponseEnabledAsync();
+    }
+
+}
