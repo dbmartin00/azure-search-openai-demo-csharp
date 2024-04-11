@@ -1,4 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
+using Microsoft.ApplicationInsights;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.FeatureManagement;
 
 namespace MinimalApi.Extensions;
 
@@ -25,7 +29,30 @@ internal static class WebApplicationExtensions
 
         api.MapGet("enableLogout", OnGetEnableLogout);
 
+        api.MapGet("talkToAPerson", OnTalkToAPersonAsync);
+        api.MapGet("satisfiedResponse", OnSatisfiedResponseAsync);
+        api.MapGet("sampleQuestions", OnSampleQuestionsAsync);
+
         return app;
+    }
+
+    private static async Task<string> OnTalkToAPersonAsync(IVariantFeatureManagerSnapshot snapshot) {
+        return await GetFeatureVariantAsync(snapshot, "talk_to_a_person");
+    }
+
+    private static async Task<string> OnSatisfiedResponseAsync(IVariantFeatureManagerSnapshot snapshot) {
+        return await GetFeatureVariantAsync(snapshot, "satisfied_response");
+    }
+
+    private static async Task<string> OnSampleQuestionsAsync(IVariantFeatureManagerSnapshot snapshot) {
+        return await GetFeatureVariantAsync(snapshot, "sample_questions");
+    }
+
+    private static async Task<string> GetFeatureVariantAsync(IVariantFeatureManagerSnapshot snapshot, string flag_name)
+    {
+        CancellationToken cancellationToken = new CancellationToken();
+        Variant personVariant = await snapshot.GetVariantAsync(flag_name, cancellationToken);
+        return personVariant.Configuration.Get<string>() ?? "control";
     }
 
     private static IResult OnGetEnableLogout(HttpContext context)

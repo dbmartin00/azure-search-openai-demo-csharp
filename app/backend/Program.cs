@@ -1,8 +1,38 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.ApplicationInsights.AspNetCore.Extensions;
+using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.FeatureManagement.Telemetry.ApplicationInsights.AspNetCore;
+using Microsoft.FeatureManagement.Telemetry.ApplicationInsights;
+using Microsoft.FeatureManagement;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration
+    .AddAzureAppConfiguration(o =>
+    {
+        o.Connect("Endpoint=https://split-azure-experimentation-demo.azconfig.io;Id=EAg/;Secret=OlizPliX4JdgsxbM6MM97uf7ZzUrCJQOQAYh+RGV78E=");
+
+        o.UseFeatureFlags();
+    });
+
+builder.Services.AddApplicationInsightsTelemetry(
+    new ApplicationInsightsServiceOptions
+    {
+        ConnectionString = "InstrumentationKey=63f0b552-7982-4fda-b8b7-0537742b742f;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=da4ea3a5-3c45-4611-a93d-7a09626fba2e",
+        EnableAdaptiveSampling = false
+    })
+    .AddSingleton<ITelemetryInitializer, TargetingTelemetryInitializer>();
+
+builder.Services.AddHttpContextAccessor();
+
+// Add Azure App Configuration and feature management services to the container.
+builder.Services.AddAzureAppConfiguration()
+    .AddFeatureManagement()
+    .WithTargeting<ExampleTargetingContextAccessor>()
+    .AddTelemetryPublisher<ApplicationInsightsTelemetryPublisher>();
+
 
 builder.Configuration.ConfigureAzureKeyVault();
 
@@ -66,6 +96,10 @@ else
 }
 
 var app = builder.Build();
+
+app.UseAzureAppConfiguration();
+app.UseMiddleware<TargetingHttpContextMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

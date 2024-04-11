@@ -1,4 +1,7 @@
-﻿<MudGrid Justify="Justify.Center">
+﻿@using System.Text.Json;
+@inject ApiClient ApiClient
+
+<MudGrid Justify="Justify.Center">
 @if (_parsedAnswer.HasValue is true)
 {
     var answer = _parsedAnswer.Value;
@@ -39,6 +42,18 @@
                                             @followup
                                     </MudChip>
                                 }
+                               @if (SatisfiedResponseEnabled()) {                                    
+                                    <MudChip Variant="Variant.Text" Color="Color.Secondary"
+                                        OnClick="@(_ => OnAskFollowupAsync("Thank you!"))">
+                                            Thank you!
+                                    </MudChip>
+                                }
+                               @if (TalkToAPersonEnabled()) {                                    
+                                    <MudChip Variant="Variant.Text" Color="Color.Secondary"
+                                        OnClick="@(_ => OnAskFollowupAsync("Can I talk to a person?"))">
+                                            Can I talk to a person?
+                                    </MudChip>
+                                }                                   
                             </div>
                         }
                     </MudPaper>
@@ -67,3 +82,38 @@
     </MudItem>
 }
 </MudGrid>
+
+@code {
+    private bool satisfiedResponseEnabled;
+
+    private bool talkToAPersonEnabled;
+
+    private bool SatisfiedResponseEnabled() {
+        return satisfiedResponseEnabled;
+    }
+
+    private bool TalkToAPersonEnabled() {
+        return talkToAPersonEnabled;
+    }
+
+    private class SplitConfig
+    {
+        public required string splitName { get; set; }
+        public required string treatment { get; set; }
+    }    
+    protected override async Task OnInitializedAsync()
+    {
+        string? response = await ApiClient.SatisfiedResponseEnabledAsync();
+
+        if(response != null) {
+            satisfiedResponseEnabled = string.Equals(response, "On");
+        }     
+
+        string? talkResponse = await ApiClient.TalkToAPersonAsync();
+
+        if(talkResponse != null) {
+            talkToAPersonEnabled = string.Equals(talkResponse, "On");
+        }
+    }
+
+}

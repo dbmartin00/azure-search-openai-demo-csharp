@@ -6,6 +6,33 @@ namespace SharedWebComponents.Services;
 
 public sealed class ApiClient(HttpClient httpClient)
 {
+
+
+   public async Task<string?> TalkToAPersonAsync()
+    {
+        var response = await httpClient.GetAsync("api/talkToAPerson");
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadAsStringAsync();
+    }
+
+   public async Task<string?> SampleQuestionsAsync()
+    {
+        var response = await httpClient.GetAsync("api/sampleQuestions");
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadAsStringAsync();
+    }
+
+   public async Task<string?> SatisfiedResponseEnabledAsync()
+    {
+        var response = await httpClient.GetAsync("api/satisfiedResponse");
+        response.EnsureSuccessStatusCode();
+        
+        return await response.Content.ReadAsStringAsync();
+    }
+
+
     public async Task<ImageResponse?> RequestImageAsync(PromptRequest request)
     {
         var response = await httpClient.PostAsJsonAsync(
