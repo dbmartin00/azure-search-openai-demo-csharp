@@ -18,6 +18,7 @@
     <PackageReference Include="Markdig" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
     <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.FeatureManagement.Telemetry.ApplicationInsights.AspNetCore" />
     <PackageReference Include="MudBlazor" />
     <PackageReference Include="System.Linq.Async" />
   </ItemGroup>
