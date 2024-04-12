@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Azure.Core;
+using Microsoft.FeatureManagement;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Embeddings;
@@ -10,20 +11,37 @@ namespace MinimalApi.Services;
 #pragma warning disable SKEXP0001 // Mark members as static
 public class ReadRetrieveReadChatService
 {
+
+    public class ChatProperties
+    {
+        public double Temperature { get; set; }
+        public string? ModelId { get; set; }
+        public int MaxTokens { get; set; }
+
+        public override string ToString()
+        {
+            return $"temperature: {Temperature} modelid: {ModelId} max_tokens: {MaxTokens}";
+        }
+    }
+
     private readonly ISearchService _searchClient;
     private readonly Kernel _kernel;
     private readonly IConfiguration _configuration;
     private readonly IComputerVisionService? _visionService;
     private readonly TokenCredential? _tokenCredential;
+    private readonly IVariantFeatureManagerSnapshot _snapshot;
 
     public ReadRetrieveReadChatService(
+        IVariantFeatureManagerSnapshot snapshot,
         ISearchService searchClient,
         OpenAIClient client,
         IConfiguration configuration,
         IComputerVisionService? visionService = null,
-        TokenCredential? tokenCredential = null)
+        TokenCredential? tokenCredential = null
+        )
     {
         _searchClient = searchClient;
+        _snapshot = snapshot;
         var kernelBuilder = Kernel.CreateBuilder();
 
         if (configuration["UseAOAI"] == "false")
@@ -180,6 +198,37 @@ You answer needs to be a json object with the following format.
             StopSequences = [],
         };
 
+        Variant variant = await _snapshot!.GetVariantAsync("chat_properties", cancellationToken);
+        string v = variant.Configuration.Get<string>() ?? "control";
+        bool ChatPropertiesEnabled = string.Equals(v, "On");
+
+        variant = await _snapshot!.GetVariantAsync("answer_prefix", cancellationToken);
+        v = variant.Configuration.Get<string>() ?? "control";
+        bool AnswerPrefixEnabled = string.Equals(v, "On");
+
+        var appConfiguration = new ConfigurationBuilder()
+            .AddAzureAppConfiguration("Endpoint=https://split-azure-experimentation-demo.azconfig.io;Id=EAg/;Secret=OlizPliX4JdgsxbM6MM97uf7ZzUrCJQOQAYh+RGV78E=")
+            .Build();
+                    
+        var chatPropertiesOn = new ChatProperties();
+        appConfiguration.GetSection("split:chat_properties:on").Bind(chatPropertiesOn);
+        var chatPropertiesOff = new ChatProperties();
+        appConfiguration.GetSection("split:chat_properties:on").Bind(chatPropertiesOff);
+
+        if(ChatPropertiesEnabled) {
+            promptExecutingSetting.ModelId = chatPropertiesOn.ModelId;
+            promptExecutingSetting.MaxTokens = chatPropertiesOn.MaxTokens;
+            promptExecutingSetting.Temperature = chatPropertiesOn.Temperature;
+        } else {
+            promptExecutingSetting.ModelId = chatPropertiesOff.ModelId;
+            promptExecutingSetting.MaxTokens = chatPropertiesOff.MaxTokens;
+            promptExecutingSetting.Temperature = chatPropertiesOff.Temperature;
+        }
+
+        var onCursor = appConfiguration.GetSection("split:answer_prefix:on").Get<string>();
+        var offCursor = appConfiguration.GetSection("split:answer_prefix:off").Get<string>();
+
+
         // get answer
         var answer = await chat.GetChatMessageContentAsync(
                        answerChat,
@@ -189,6 +238,13 @@ You answer needs to be a json object with the following format.
         var answerObject = JsonSerializer.Deserialize<JsonElement>(answerJson);
         var ans = answerObject.GetProperty("answer").GetString() ?? throw new InvalidOperationException("Failed to get answer");
         var thoughts = answerObject.GetProperty("thoughts").GetString() ?? throw new InvalidOperationException("Failed to get thoughts");
+
+        if(AnswerPrefixEnabled) {
+            ans = onCursor + ans;
+        } else {
+            ans = offCursor + ans;
+        }
+
 
         // step 4
         // add follow up questions if requested

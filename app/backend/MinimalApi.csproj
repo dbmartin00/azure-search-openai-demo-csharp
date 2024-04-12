@@ -22,6 +22,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
     <PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="Microsoft.FeatureManagement" />
     <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" />
     <PackageReference Include="Microsoft.FeatureManagement.Telemetry.ApplicationInsights" />
     <PackageReference Include="Microsoft.FeatureManagement.Telemetry.ApplicationInsights.AspNetCore" />

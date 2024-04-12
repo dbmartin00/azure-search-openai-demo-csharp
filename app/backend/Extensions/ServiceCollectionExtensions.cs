@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using Microsoft.FeatureManagement;
+
 namespace MinimalApi.Extensions;
 
 internal static class ServiceCollectionExtensions
@@ -82,6 +84,8 @@ internal static class ServiceCollectionExtensions
             var useVision = config["UseVision"] == "true";
             var openAIClient = sp.GetRequiredService<OpenAIClient>();
             var searchClient = sp.GetRequiredService<ISearchService>();
+            var featureManagerSnapshot = sp.GetRequiredService<IVariantFeatureManagerSnapshot>();
+
             if (useVision)
             {
                 var azureComputerVisionServiceEndpoint = config["AzureComputerVisionServiceEndpoint"];
@@ -89,11 +93,11 @@ internal static class ServiceCollectionExtensions
                 var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
                 
                 var visionService = new AzureComputerVisionService(httpClient, azureComputerVisionServiceEndpoint, s_azureCredential);
-                return new ReadRetrieveReadChatService(searchClient, openAIClient, config, visionService, s_azureCredential);
+                return new ReadRetrieveReadChatService(featureManagerSnapshot, searchClient, openAIClient, config, visionService, s_azureCredential);
             }
             else
             {
-                return new ReadRetrieveReadChatService(searchClient, openAIClient, config, tokenCredential: s_azureCredential);
+                return new ReadRetrieveReadChatService(featureManagerSnapshot, searchClient, openAIClient, config, null, tokenCredential: s_azureCredential);
             }
         });
 
