@@ -5,6 +5,7 @@ using Microsoft.FeatureManagement;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Embeddings;
+using System.Text.RegularExpressions;
 
 namespace MinimalApi.Services;
 #pragma warning disable SKEXP0011 // Mark members as static
@@ -72,6 +73,36 @@ public class ReadRetrieveReadChatService
         _configuration = configuration;
         _visionService = visionService;
         _tokenCredential = tokenCredential;
+    }
+
+    public static string HealJson(string json)
+    {   
+        string result = json.Trim();
+        result = result.Replace("\r\n", " ");
+        result = result.Replace("\n", " ");
+
+        // Check if the JSON ends with a closing quote and brace
+        if (!result.TrimEnd().EndsWith("\"}") 
+                // && !result.TrimEnd().EndsWith("\" }")
+                && !Regex.IsMatch(result, "\"\\s*}$")
+                && !Regex.IsMatch(result, "\"\\s*]$"))
+        {
+            // Check for missing closing quote
+            if (!result.TrimEnd().EndsWith("\""))
+            {
+                result += "\"";
+            }
+            
+            // Check for missing closing brace
+            if (result.TrimStart().StartsWith("{") && !result.TrimEnd().EndsWith("}"))
+            {
+                result += "}";
+            } else if (result.TrimStart().StartsWith("[") && !result.TrimEnd().EndsWith("]")) {
+                result += "]";
+            }
+        }
+        
+        return result;
     }
 
     public async Task<ApproachResponse> ReplyAsync(
@@ -235,7 +266,15 @@ You answer needs to be a json object with the following format.
                        promptExecutingSetting,
                        cancellationToken: cancellationToken);
         var answerJson = answer.Content ?? throw new InvalidOperationException("Failed to get search query");
-        var answerObject = JsonSerializer.Deserialize<JsonElement>(answerJson);
+
+        answerJson = HealJson(answerJson);
+
+        var answerObject = new JsonElement();
+        try {
+            answerObject = JsonSerializer.Deserialize<JsonElement>(answerJson);
+        } catch (Exception ex) {
+            new JsonException("chat answer is malformed json: \"" + answerJson + "\"; " + ex.Message);
+        }
         var ans = answerObject.GetProperty("answer").GetString() ?? throw new InvalidOperationException("Failed to get answer");
         var thoughts = answerObject.GetProperty("thoughts").GetString() ?? throw new InvalidOperationException("Failed to get thoughts");
 
