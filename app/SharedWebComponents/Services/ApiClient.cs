@@ -6,7 +6,13 @@ namespace SharedWebComponents.Services;
 
 public sealed class ApiClient(HttpClient httpClient)
 {
+    public async Task<string> TrackEventAsync(string eventTypeId)
+    {
+        var response = await httpClient.GetAsync("api/track?eventTypeId=" + eventTypeId);
+        response.EnsureSuccessStatusCode();
 
+        return await response.Content.ReadAsStringAsync();      
+    }
 
    public async Task<string?> TalkToAPersonAsync()
     {

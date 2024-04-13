@@ -3,6 +3,8 @@ using Microsoft.ApplicationInsights;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.FeatureManagement;
+using Microsoft.FeatureManagement.Telemetry.ApplicationInsights;
+using Microsoft.FeatureManagement.Telemetry.ApplicationInsights.AspNetCore;
 
 namespace MinimalApi.Extensions;
 
@@ -32,8 +34,17 @@ internal static class WebApplicationExtensions
         api.MapGet("talkToAPerson", OnTalkToAPersonAsync);
         api.MapGet("satisfiedResponse", OnSatisfiedResponseAsync);
         api.MapGet("sampleQuestions", OnSampleQuestionsAsync);
-
+        api.MapGet("track", OnTrack);
         return app;
+    }
+
+    private static string OnTrack(
+        string eventTypeId,
+        TelemetryClient telemetryClient)
+    {
+        // telemetryClient.TrackEvent(eventTypeId);
+
+        return "sent";
     }
 
     private static async Task<string> OnTalkToAPersonAsync(IVariantFeatureManagerSnapshot snapshot) {

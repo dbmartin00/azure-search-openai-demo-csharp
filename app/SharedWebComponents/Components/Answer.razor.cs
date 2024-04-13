@@ -12,7 +12,7 @@ public sealed partial class Answer
 
     [Inject] public required IPdfViewer PdfViewer { get; set; }
 
-    [Inject] public required TelemetryClient telemetryClient { get; set; }
+    // [Inject] public required TelemetryClient telemetryClient { get; set; }
 
     private HtmlParsedAnswer? _parsedAnswer;
 
@@ -26,7 +26,7 @@ public sealed partial class Answer
 
     private void TrackEvent(string eventTypeId)
     {
-        telemetryClient.TrackEvent(eventTypeId);
+        // telemetryClient.TrackEvent(eventTypeId);
 
         // telemetryClient.getContext().getUser().setId("dmartin");
     }
@@ -34,9 +34,9 @@ public sealed partial class Answer
     private async Task OnAskFollowupAsync(string followupQuestion)
     {
         if(followupQuestion.StartsWith("Thank you")) {
-            TrackEvent("thank_you");
+            ApiClient.TrackEventAsync("thank_you");
         } else if (followupQuestion.StartsWith("Can I talk")) {
-            TrackEvent("want_to_talk");
+            ApiClient.TrackEventAsync("want_to_talk");
         }  
 
         if (FollowupQuestionClicked.HasDelegate)
