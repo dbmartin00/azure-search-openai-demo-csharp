@@ -42,6 +42,7 @@ internal static class WebApplicationExtensions
         string eventTypeId,
         TelemetryClient telemetryClient)
     {
+        // telemetryClient.getContext().getUser().setId("dmartin");
         telemetryClient.TrackEvent(eventTypeId);
 
         return "sent";

@@ -34,9 +34,9 @@ public sealed partial class Answer
     private async Task OnAskFollowupAsync(string followupQuestion)
     {
         if(followupQuestion.StartsWith("Thank you")) {
-            ApiClient.TrackEventAsync("thank_you");
+            await ApiClient.TrackEventAsync("thank_you");
         } else if (followupQuestion.StartsWith("Can I talk")) {
-            ApiClient.TrackEventAsync("want_to_talk");
+            await ApiClient.TrackEventAsync("want_to_talk");
         }  
 
         if (FollowupQuestionClicked.HasDelegate)
