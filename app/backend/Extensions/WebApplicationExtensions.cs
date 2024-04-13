@@ -42,7 +42,7 @@ internal static class WebApplicationExtensions
         string eventTypeId,
         TelemetryClient telemetryClient)
     {
-        // telemetryClient.TrackEvent(eventTypeId);
+        telemetryClient.TrackEvent(eventTypeId);
 
         return "sent";
     }
