@@ -40,9 +40,22 @@ internal static class WebApplicationExtensions
 
     private static string OnTrack(
         string eventTypeId,
-        TelemetryClient telemetryClient)
+        TelemetryClient telemetryClient,
+        HttpContext httpContext)
     {
-        // telemetryClient.getContext().getUser().setId("dmartin");
+        // telemetryClient.getContext().getUser().setId("dmartin"); // Java land        
+        // if (httpContext.User?.Identity?.IsAuthenticated == true) {
+        //     telemetryClient.Context.User.AuthenticatedUserId = httpContext.User.Identity.Name;
+        // }
+        // telemetryClient.Context.User.Id = httpContext?.User?.Identity?.Name;
+
+        // telemetryClient.TrackEvent(eventTypeId,
+        //     new Dictionary<string,string> {
+        //     ["userid"] = "[ \"" + httpContext?.User?.Identity?.Name + "\" ]",
+        // });
+
+        telemetryClient.Context.User.AuthenticatedUserId = "david.martin@split.io";
+        
         telemetryClient.TrackEvent(eventTypeId);
 
         return "sent";
