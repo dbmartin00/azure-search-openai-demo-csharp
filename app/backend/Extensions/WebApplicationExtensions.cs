@@ -125,14 +125,25 @@ internal static class WebApplicationExtensions
     private static async Task<IResult> OnPostChatAsync(
         ChatRequest request,
         ReadRetrieveReadChatService chatService,
+        TelemetryClient telemetryClient,
         CancellationToken cancellationToken)
     {
         if (request is { History.Length: > 0 })
         {
-            var response = await chatService.ReplyAsync(
-                request.History, request.Overrides, cancellationToken);
+            try {
+                var response = await chatService.ReplyAsync(
+                    request.History, request.Overrides, cancellationToken);
 
-            return TypedResults.Ok(response);
+                return TypedResults.Ok(response);
+            } catch (Exception ex) {
+                Dictionary<string, string> props = new Dictionary<string, string>();
+                props.Add("ex.Message", ex.Message);
+                props.Add("ex.StackTrace", ex.StackTrace!);
+                props.Add("ex.Source", ex.Source!);
+
+                telemetryClient.TrackMetric("error", 1, props);
+                throw;
+            }            
         }
 
         return Results.BadRequest();
