@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Azure.Core;
+using Microsoft.ApplicationInsights;
 using Microsoft.FeatureManagement;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -32,7 +33,10 @@ public class ReadRetrieveReadChatService
     private readonly TokenCredential? _tokenCredential;
     private readonly IVariantFeatureManagerSnapshot _snapshot;
 
+    private readonly TelemetryClient _telemetryClient;
+
     public ReadRetrieveReadChatService(
+        TelemetryClient telemetryClient,
         IVariantFeatureManagerSnapshot snapshot,
         ISearchService searchClient,
         OpenAIClient client,
@@ -41,6 +45,8 @@ public class ReadRetrieveReadChatService
         TokenCredential? tokenCredential = null
         )
     {
+        _telemetryClient = telemetryClient;
+
         _searchClient = searchClient;
         _snapshot = snapshot;
         var kernelBuilder = Kernel.CreateBuilder();
@@ -260,12 +266,32 @@ You answer needs to be a json object with the following format.
         var offCursor = appConfiguration.GetSection("split:answer_prefix:off").Get<string>();
 
 
+        DateTime startTime = DateTime.UtcNow;
+
         // get answer
         var answer = await chat.GetChatMessageContentAsync(
                        answerChat,
                        promptExecutingSetting,
                        cancellationToken: cancellationToken);
         var answerJson = answer.Content ?? throw new InvalidOperationException("Failed to get search query");
+
+        DateTime endTime = DateTime.UtcNow;
+        TimeSpan getChatMessageTimeSpan = endTime - startTime;
+        long getChatMessageTimeInMillis = (long) getChatMessageTimeSpan.TotalMilliseconds;
+
+        // DBM ought to look at HttpContext, but DI is failing at the ServiceCollectionExtensions
+        string? name = _telemetryClient.Context.User.AuthenticatedUserId;
+
+        if(name == null) {
+            name = Guid.NewGuid().ToString();
+            _telemetryClient.Context.User.AuthenticatedUserId = name;
+        }
+
+        Dictionary<string, string> props = new Dictionary<string, string>();
+        props.Add("MaxTokens", "" + promptExecutingSetting.MaxTokens);
+        props.Add("Temperature", "" + promptExecutingSetting.Temperature);
+        props.Add("ModelId", "" + promptExecutingSetting.ModelId);
+        _telemetryClient.TrackMetric("chat_latency_in_ms", getChatMessageTimeInMillis, props);
 
         answerJson = HealJson(answerJson);
 

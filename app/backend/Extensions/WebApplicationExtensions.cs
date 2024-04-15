@@ -41,7 +41,7 @@ internal static class WebApplicationExtensions
     private static string OnTrack(
         string eventTypeId,
         TelemetryClient telemetryClient,
-        HttpContext httpContext)
+        IHttpContextAccessor httpContextAccessor)
     {
         // telemetryClient.getContext().getUser().setId("dmartin"); // Java land        
         // if (httpContext.User?.Identity?.IsAuthenticated == true) {
@@ -54,7 +54,7 @@ internal static class WebApplicationExtensions
         //     ["userid"] = "[ \"" + httpContext?.User?.Identity?.Name + "\" ]",
         // });
 
-        telemetryClient.Context.User.AuthenticatedUserId = "david.martin@split.io";
+        // telemetryClient.Context.User.AuthenticatedUserId = "david.martin@split.io";
         
         telemetryClient.TrackEvent(eventTypeId);
 
