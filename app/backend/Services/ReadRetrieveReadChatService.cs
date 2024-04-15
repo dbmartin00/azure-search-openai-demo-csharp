@@ -299,8 +299,15 @@ You answer needs to be a json object with the following format.
         try {
             answerObject = JsonSerializer.Deserialize<JsonElement>(answerJson);
         } catch (Exception ex) {
-            new JsonException("chat answer is malformed json: \"" + answerJson + "\"; " + ex.Message);
+            Exception nex = new JsonException("chat answer is malformed json: \"" + answerJson + "\"; " + ex.Message);
+            throw nex;
         }
+        Dictionary<string, string> jProps = new Dictionary<string, string>();
+        jProps.Add("Json", answerObject.ToString());
+
+        // DBM for debug
+        _telemetryClient.TrackMetric("json", 0, jProps);
+
         var ans = answerObject.GetProperty("answer").GetString() ?? throw new InvalidOperationException("Failed to get answer");
         var thoughts = answerObject.GetProperty("thoughts").GetString() ?? throw new InvalidOperationException("Failed to get thoughts");
 
