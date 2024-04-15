@@ -250,7 +250,7 @@ You answer needs to be a json object with the following format.
         var chatPropertiesOn = new ChatProperties();
         appConfiguration.GetSection("split:chat_properties:on").Bind(chatPropertiesOn);
         var chatPropertiesOff = new ChatProperties();
-        appConfiguration.GetSection("split:chat_properties:on").Bind(chatPropertiesOff);
+        appConfiguration.GetSection("split:chat_properties:off").Bind(chatPropertiesOff);
 
         if(ChatPropertiesEnabled) {
             promptExecutingSetting.ModelId = chatPropertiesOn.ModelId;
