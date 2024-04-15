@@ -269,11 +269,24 @@ You answer needs to be a json object with the following format.
         DateTime startTime = DateTime.UtcNow;
 
         // get answer
-        var answer = await chat.GetChatMessageContentAsync(
-                       answerChat,
-                       promptExecutingSetting,
-                       cancellationToken: cancellationToken);
-        var answerJson = answer.Content ?? throw new InvalidOperationException("Failed to get search query");
+        ChatMessageContent answer;
+        var answerJson = "";
+        try {
+            answer = await chat.GetChatMessageContentAsync(
+                        answerChat,
+                        promptExecutingSetting,
+                        cancellationToken: cancellationToken);
+            answerJson = answer.Content ?? throw new InvalidOperationException("Failed to get search query");
+        } catch (Exception ee) {
+            if(!ee.Message.Contains("Status: 429")) {
+                throw;
+            }
+            answerJson = $@" 
+                {{ 
+                    ""answer"": ""The squirrels are taking a breather.  Come back soon."", 
+                    ""thoughts"": ""JSON malformed. {ee.Message.Replace("\"", "\\\"")}""
+                }}";
+        }
 
         DateTime endTime = DateTime.UtcNow;
         TimeSpan getChatMessageTimeSpan = endTime - startTime;
@@ -288,25 +301,32 @@ You answer needs to be a json object with the following format.
         }
 
         Dictionary<string, string> props = new Dictionary<string, string>();
+        props.Add("TargetingId", name);
         props.Add("MaxTokens", "" + promptExecutingSetting.MaxTokens);
         props.Add("Temperature", "" + promptExecutingSetting.Temperature);
         props.Add("ModelId", "" + promptExecutingSetting.ModelId);
-        _telemetryClient.TrackMetric("chat_latency_in_ms", getChatMessageTimeInMillis, props);
+        props.Add("chat_latency_in_ms", "" + getChatMessageTimeInMillis);
+        _telemetryClient.TrackEvent("chat_latency_in_ms", props);
 
         answerJson = HealJson(answerJson);
 
         var answerObject = new JsonElement();
         try {
             answerObject = JsonSerializer.Deserialize<JsonElement>(answerJson);
-        } catch (Exception ex) {
-            Exception nex = new JsonException("chat answer is malformed json: \"" + answerJson + "\"; " + ex.Message);
-            throw nex;
+        } catch (Exception) {
+            var json2 = $@" 
+                            {{ 
+                                ""answer"": ""The squirrels are out to lunch.  Come back soon."", 
+                                ""thoughts"": ""JSON malformed. {answerJson.Replace("\"", "\\\"")}""
+                            }}";   
+
+            answerObject = JsonSerializer.Deserialize<JsonElement>(json2);                           
         }
         Dictionary<string, string> jProps = new Dictionary<string, string>();
         jProps.Add("Json", answerObject.ToString());
 
         // DBM for debug
-        _telemetryClient.TrackMetric("json", 0, jProps);
+        _telemetryClient.TrackEvent("json", jProps);
 
         var ans = answerObject.GetProperty("answer").GetString() ?? throw new InvalidOperationException("Failed to get answer");
         var thoughts = answerObject.GetProperty("thoughts").GetString() ?? throw new InvalidOperationException("Failed to get thoughts");

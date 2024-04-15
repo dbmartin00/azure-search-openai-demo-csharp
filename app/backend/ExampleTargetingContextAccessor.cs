@@ -1,4 +1,5 @@
 using Microsoft.FeatureManagement.FeatureFilters;
+using Microsoft.ApplicationInsights;
 
     public class ExampleTargetingContextAccessor : ITargetingContextAccessor
     {
@@ -13,6 +14,7 @@ using Microsoft.FeatureManagement.FeatureFilters;
         public ValueTask<TargetingContext> GetContextAsync()
         {
             HttpContext httpContext = _httpContextAccessor.HttpContext!;
+            TelemetryClient telemetryClient = httpContext.RequestServices.GetRequiredService<TelemetryClient>();
             if (httpContext.Items.TryGetValue(TargetingContextLookup, out object? value))
             {
                 return new ValueTask<TargetingContext>((TargetingContext)value!);
@@ -24,7 +26,7 @@ using Microsoft.FeatureManagement.FeatureFilters;
             }
             TargetingContext targetingContext = new TargetingContext
             {
-                UserId = httpContext.User.Identity.Name,
+                UserId = telemetryClient.Context.User.AuthenticatedUserId, //httpContext.User.Identity.Name,
                 Groups = groups
             };
             httpContext.Items[TargetingContextLookup] = targetingContext;

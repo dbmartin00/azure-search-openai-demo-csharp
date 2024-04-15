@@ -56,7 +56,9 @@ internal static class WebApplicationExtensions
 
         // telemetryClient.Context.User.AuthenticatedUserId = "david.martin@split.io";
         
-        telemetryClient.TrackEvent(eventTypeId);
+        Dictionary<string, string> props = new Dictionary<string, string>();
+        props.Add("TargetingId", telemetryClient.Context.User.AuthenticatedUserId);
+        telemetryClient.TrackEvent(eventTypeId, props);
 
         return "sent";
     }
@@ -137,11 +139,12 @@ internal static class WebApplicationExtensions
                 return TypedResults.Ok(response);
             } catch (Exception ex) {
                 Dictionary<string, string> props = new Dictionary<string, string>();
+                props.Add("TargetingId", telemetryClient.Context.User.AuthenticatedUserId);                
                 props.Add("ex.Message", ex.Message);
                 props.Add("ex.StackTrace", ex.StackTrace!);
                 props.Add("ex.Source", ex.Source!);
 
-                telemetryClient.TrackMetric("error", 1, props);
+                telemetryClient.TrackEvent("error", props);
                 throw;
             }            
         }

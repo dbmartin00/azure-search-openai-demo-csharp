@@ -35,7 +35,7 @@ param applicationInsightsName string = ''
 param appServicePlanName string = ''
 
 @description('Capacity of the chat GPT deployment. Default: 10')
-param chatGptDeploymentCapacity int = 10
+param chatGptDeploymentCapacity int = 20
 
 @description('Name of the chat GPT deployment')
 param azureChatGptDeploymentName string = 'chat'
@@ -56,7 +56,7 @@ param computerVisionSkuName string = 'S1'
 param azureEmbeddingDeploymentName string = 'embedding'
 
 @description('Capacity of the embedding deployment. Default: 30')
-param embeddingDeploymentCapacity int = 30
+param embeddingDeploymentCapacity int = 60
 
 @description('Name of the embedding model. Default: text-embedding-ada-002')
 param azureEmbeddingModelName string = 'text-embedding-ada-002'
