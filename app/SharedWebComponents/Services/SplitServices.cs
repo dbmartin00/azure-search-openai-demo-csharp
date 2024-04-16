@@ -4,12 +4,12 @@ public class SplitServices
 
     public static string GetSplitSdkKey()
     {
-        return "28bddhnjht06lvi8e5aa9rkmv5glsc40ltaa";
+        return "ep4lsb0sbbla53093p5jmmstgkf27c6osajo";
     }
 
     public static string GetEvaluatorURL()
     {
-        return "https://split-evaluator.darkbloom.org";
+        return "https://split-evaluator.us.az.split-stage.io/";
     }
 
     public static string GetSplitEvaluatorAuthKey()
