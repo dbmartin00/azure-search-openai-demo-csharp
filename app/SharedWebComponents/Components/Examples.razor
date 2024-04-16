@@ -74,13 +74,18 @@
         public required string splitName { get; set; }
         public required string treatment { get; set; }
     }    
+
     protected override async Task OnInitializedAsync()
     {
         string? response = await ApiClient.SampleQuestionsAsync();
 
         if(response != null) {
-            var config = JsonSerializer.Deserialize<SplitConfig>(response);
-            sampleQuestionsEnabled = string.Equals(config?.treatment, "on");
+            try {
+                var config = JsonSerializer.Deserialize<SplitConfig>(response);
+                sampleQuestionsEnabled = string.Equals(config?.treatment, "on");
+            } catch (Exception ex) {
+                throw new JsonException("json deserialization failure: " + response + " ex.Message: " + ex.Message);
+            }
         }     
     }
 

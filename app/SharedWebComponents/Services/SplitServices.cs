@@ -9,7 +9,7 @@ public class SplitServices
 
     public static string GetEvaluatorURL()
     {
-        return "https://split-evaluator.us.az.split-stage.io/";
+        return "https://split-evaluator.us.az.split-stage.io";
     }
 
     public static string GetSplitEvaluatorAuthKey()
