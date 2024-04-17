@@ -1,11 +1,19 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Net.Http.Headers;
+using Microsoft.ApplicationInsights;
 
 namespace SharedWebComponents.Services;
 
 public sealed class ApiClient(HttpClient httpClient)
 {
+    
+    public async void InitUserId()
+    {
+        var response = await httpClient.GetAsync("api/initializeId");
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<string> TrackEventAsync(string eventTypeId)
     {
         var response = await httpClient.GetAsync("api/track?eventTypeId=" + eventTypeId);

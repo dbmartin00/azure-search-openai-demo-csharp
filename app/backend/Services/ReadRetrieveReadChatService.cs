@@ -295,11 +295,6 @@ You answer needs to be a json object with the following format.
         // DBM ought to look at HttpContext, but DI is failing at the ServiceCollectionExtensions
         string? name = _telemetryClient.Context.User.AuthenticatedUserId;
 
-        if(name == null) {
-            name = Guid.NewGuid().ToString();
-            _telemetryClient.Context.User.AuthenticatedUserId = name;
-        }
-
         Dictionary<string, string> props = new Dictionary<string, string>();
         props.Add("TargetingId", name);
         props.Add("MaxTokens", "" + promptExecutingSetting.MaxTokens);

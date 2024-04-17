@@ -35,7 +35,14 @@ internal static class WebApplicationExtensions
         api.MapGet("satisfiedResponse", OnSatisfiedResponseAsync);
         api.MapGet("sampleQuestions", OnSampleQuestionsAsync);
         api.MapGet("track", OnTrack);
+        api.MapGet("initializeId", OnInitializeId);
         return app;
+    }
+
+    private static string OnInitializeId(TelemetryClient telemetryClient) {
+        string name = Guid.NewGuid().ToString();
+        telemetryClient.Context.User.AuthenticatedUserId = name;
+        return "ok";
     }
 
     private static string OnTrack(
