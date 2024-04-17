@@ -253,11 +253,11 @@ You answer needs to be a json object with the following format.
         appConfiguration.GetSection("split:chat_properties:off").Bind(chatPropertiesOff);
 
         if(ChatPropertiesEnabled) {
-            promptExecutingSetting.ModelId = chatPropertiesOn.ModelId;
+            // promptExecutingSetting.ModelId = chatPropertiesOn.ModelId;
             promptExecutingSetting.MaxTokens = chatPropertiesOn.MaxTokens;
             promptExecutingSetting.Temperature = chatPropertiesOn.Temperature;
         } else {
-            promptExecutingSetting.ModelId = chatPropertiesOff.ModelId;
+            // promptExecutingSetting.ModelId = chatPropertiesOff.ModelId;
             promptExecutingSetting.MaxTokens = chatPropertiesOff.MaxTokens;
             promptExecutingSetting.Temperature = chatPropertiesOff.Temperature;
         }
@@ -278,13 +278,13 @@ You answer needs to be a json object with the following format.
                         cancellationToken: cancellationToken);
             answerJson = answer.Content ?? throw new InvalidOperationException("Failed to get search query");
         } catch (Exception ee) {
-            if(!ee.Message.Contains("Status: 429")) {
-                throw;
-            }
+            // if(!ee.Message.Contains("Status: 429")) {
+            //     throw;
+            // }
             answerJson = $@" 
                 {{ 
                     ""answer"": ""The squirrels are taking a breather.  Come back soon."", 
-                    ""thoughts"": ""JSON malformed. {ee.Message.Replace("\"", "\\\"")}""
+                    ""thoughts"": ""error message: {ee.Message}.  JSON: {answerJson}""
                 }}";
         }
 
@@ -356,14 +356,25 @@ e.g.
     ""What is the out-of-pocket maximum?""
 ]");
 
-            var followUpQuestions = await chat.GetChatMessageContentAsync(
-                followUpQuestionChat,
-                promptExecutingSetting,
-                cancellationToken: cancellationToken);
+            var followUpQuestionsList = new List<string?>();
+            try  
+            {
+                var followUpQuestions = await chat.GetChatMessageContentAsync(
+                    followUpQuestionChat,
+                    promptExecutingSetting,
+                    cancellationToken: cancellationToken);
 
-            var followUpQuestionsJson = followUpQuestions.Content ?? throw new InvalidOperationException("Failed to get search query");
-            var followUpQuestionsObject = JsonSerializer.Deserialize<JsonElement>(followUpQuestionsJson);
-            var followUpQuestionsList = followUpQuestionsObject.EnumerateArray().Select(x => x.GetString()).ToList();
+                var followUpQuestionsJson = followUpQuestions.Content ?? throw new InvalidOperationException("Failed to get search query");
+                var followUpQuestionsObject = JsonSerializer.Deserialize<JsonElement>(followUpQuestionsJson);
+                followUpQuestionsList = followUpQuestionsObject.EnumerateArray().Select(x => x.GetString()).ToList();
+            } 
+            catch (Exception) 
+            {
+                followUpQuestionsList.Add("Can you remember?");
+                followUpQuestionsList.Add("Is this the question for you to ask?");
+                followUpQuestionsList.Add("Type something to get going?");
+            }
+
             foreach (var followUpQuestion in followUpQuestionsList)
             {
                 ans += $" <<{followUpQuestion}>> ";
